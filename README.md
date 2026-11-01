@@ -51,6 +51,7 @@ number and the chart below; see [Metrics](CLAUDE.md#metrics) for when to run it.
 | 16 | `126af02` | reindex (#61) | 100.0% | 100.0% | 100.0% | 0 | 4 | 8 (3 / 2 / 3) |
 | 17 | `599d586` | watcher (#65) | 100.0% | 100.0% | 100.0% | 0 | 4 | 10 (5 / 3 / 2) |
 | 18 | `5d8b78e` | rename to tesselate (#70) | 100.0% | 100.0% | 100.0% | 0 | 4 | 8 (6 / 2 / 0) |
+| 19 | `c7411f5` | outline tool v1 (#77) | 100.0% | 100.0% | 100.0% | 0 | 4 | – |
 
 
 <!-- metrics:end -->

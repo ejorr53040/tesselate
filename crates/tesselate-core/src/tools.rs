@@ -105,6 +105,11 @@ pub fn catalog() -> Vec<Value> {
             "input_schema": none,
         }),
         json!({
+            "name": "outline",
+            "description": "The repo's whole structure in one versioned answer, for programs: every module and definition with qualified id, kind, name, parent id, path, line and end_line, plus the unindexed files, ordered by path then line. Join with `edges` on `caller`.",
+            "input_schema": none,
+        }),
+        json!({
             "name": "unindexed_files",
             "description": "Source files that were skipped and why (gitignore, tesselateignore, vendored, unsupported-language, parse-failure). Check this when a symbol you expect is missing.",
             "input_schema": none,
@@ -159,6 +164,7 @@ pub(crate) fn dispatch(snap: &Snapshot, name: &str, args: &Value) -> Result<Valu
         "stylesheets" => Ok(json!(m.stylesheets())),
         "references" => Ok(json!(g.references(str_arg("symbol")?))),
         "edges" => Ok(json!(g.edges)),
+        "outline" => Ok(outline(snap)),
         "unindexed_files" => Ok(json!(snap
             .unindexed
             .iter()
@@ -173,6 +179,63 @@ pub(crate) fn dispatch(snap: &Snapshot, name: &str, args: &Value) -> Result<Valu
                 .join(", ")
         )),
     }
+}
+
+/// Bump `version` on any change a consumer could trip on (Chisel records this output).
+fn outline(snap: &Snapshot) -> Value {
+    let mut defs = Vec::new();
+    for src in &snap.sources {
+        let (Some(language), Some(file)) = (
+            crate::lang::for_path(&src.path),
+            snap.extracted.get(&src.path),
+        ) else {
+            continue;
+        };
+        let module = language.module_name(&src.path);
+        defs.push((
+            module.clone(),
+            "module",
+            module.clone(),
+            &src.path,
+            1,
+            src.text.lines().count().max(1),
+        ));
+        for d in &file.facts.defs {
+            let name = d
+                .qualname
+                .rsplit('.')
+                .next()
+                .unwrap_or(&d.qualname)
+                .to_string();
+            let id = snap
+                .graph
+                .canonical(&crate::graph::qualify(&module, &d.qualname));
+            defs.push((id, d.kind.label(), name, &src.path, d.line, d.end_line));
+        }
+    }
+    defs.sort_by(|a, b| (a.3, a.4).cmp(&(b.3, b.4)));
+    let ids: std::collections::HashSet<&str> = defs.iter().map(|d| d.0.as_str()).collect();
+    let definitions: Vec<Value> = defs
+        .iter()
+        .map(|(id, kind, name, path, line, end_line)| {
+            let mut v = json!({"id": id, "kind": kind, "name": name, "path": path, "line": line, "end_line": end_line});
+            // The parent is the nearest enclosing id that is itself listed.
+            let mut prefix = id.as_str();
+            while let Some((p, _)) = prefix.rsplit_once('.') {
+                if ids.contains(p) {
+                    v["parent"] = json!(p);
+                    break;
+                }
+                prefix = p;
+            }
+            v
+        })
+        .collect();
+    json!({
+        "version": 1,
+        "definitions": definitions,
+        "unindexed": snap.unindexed.iter().map(|s| json!({"path": s.rel, "reason": s.reason.label()})).collect::<Vec<_>>(),
+    })
 }
 
 fn overview(snap: &Snapshot) -> Value {

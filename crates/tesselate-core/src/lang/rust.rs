@@ -381,6 +381,10 @@ impl State<'_> {
         n.start_position().row + 1 + self.row_off
     }
 
+    fn end_line(&self, n: Node) -> usize {
+        n.end_position().row + 1 + self.row_off
+    }
+
     fn walk(&mut self, node: Node) {
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
@@ -528,6 +532,7 @@ impl State<'_> {
                 qualname,
                 kind: DefKind::Field,
                 line: self.line(name),
+                end_line: self.end_line(node),
                 bases: Vec::new(),
                 ty: node
                     .child_by_field_name("type")
@@ -547,6 +552,7 @@ impl State<'_> {
             qualname: qualname.clone(),
             kind: DefKind::Variant,
             line: self.line(name),
+            end_line: self.end_line(node),
             bases: Vec::new(),
             ty: None,
             owner: None,
@@ -933,6 +939,7 @@ impl State<'_> {
             qualname,
             kind,
             line: self.line(node),
+            end_line: self.end_line(node),
             bases: Vec::new(),
             ty,
             owner: if matches!(self.scope.last(), Some((_, Scope::Type))) {
@@ -956,6 +963,7 @@ impl State<'_> {
             qualname: qualname.clone(),
             kind,
             line: self.line(node),
+            end_line: self.end_line(node),
             bases: Vec::new(),
             ty: ret,
             owner: if kind == DefKind::Method {
@@ -1086,6 +1094,7 @@ impl State<'_> {
                     qualname: q.clone(),
                     kind: DefKind::Module,
                     line: name_line,
+                    end_line: self.end_line(node),
                     bases: Vec::new(),
                     ty: None,
                     owner: None,
@@ -1103,6 +1112,7 @@ impl State<'_> {
                             qualname: self.qualify(&name),
                             kind: DefKind::Module,
                             line: name_line,
+                            end_line: self.end_line(node),
                             bases: Vec::new(),
                             ty: None,
                             owner: None,
@@ -1448,6 +1458,7 @@ impl State<'_> {
             qualname,
             kind: DefKind::Function,
             line: self.line(node),
+            end_line: self.end_line(node),
             bases: Vec::new(),
             ty: None,
             owner: None,

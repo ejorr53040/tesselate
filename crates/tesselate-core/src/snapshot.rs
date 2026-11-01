@@ -25,7 +25,7 @@ pub struct Snapshot {
     /// (file, size, mtime) of every indexed file, for [`Snapshot::is_stale`].
     stamps: Vec<(PathBuf, Option<(u64, SystemTime)>)>,
     /// Each parsed file's facts by path, reused by [`Snapshot::refresh`].
-    extracted: HashMap<String, graph::Extracted>,
+    pub(crate) extracted: HashMap<String, graph::Extracted>,
     /// Full builds in this snapshot's lineage, and files re-parsed by refreshes since.
     builds: usize,
     reindexed: usize,

@@ -118,6 +118,27 @@ pub struct Source {
 #[derive(Debug, Default)]
 pub struct Graph {
     pub edges: Vec<Edge>,
+    /// Raw scope id of a foreign `impl Type` block -> `Type`'s id (see [`Graph::canonical`]).
+    impl_scopes: BTreeMap<String, String>,
+}
+
+impl Graph {
+    /// The id the resolver files a definition under: an item of `impl crate::Circle` written in
+    /// `shapes.util` is `shapes.Circle.extra`, not `shapes.util.shapes.Circle.extra`.
+    pub fn canonical(&self, id: &str) -> String {
+        canonical(&self.impl_scopes, id)
+    }
+}
+
+fn canonical(impl_scopes: &BTreeMap<String, String>, id: &str) -> String {
+    for (raw, class) in impl_scopes {
+        if let Some(rest) = id.strip_prefix(raw.as_str()) {
+            if rest.is_empty() || rest.starts_with('.') {
+                return format!("{class}{rest}");
+            }
+        }
+    }
+    id.to_string()
 }
 
 /// Everything the resolver knows about the indexed repo.
@@ -131,6 +152,8 @@ struct Index<'a> {
     fields: BTreeMap<String, Sym>,
     /// (function id, name) -> what a parameter or `let` is known to be.
     bindings: BTreeMap<(String, String), (String, TypeHint)>,
+    /// See [`Graph::impl_scopes`].
+    impl_scopes: BTreeMap<String, String>,
     /// class id -> indexed base class ids
     bases: BTreeMap<String, Vec<String>>,
     /// class id -> indexed direct subclass ids
@@ -234,6 +257,7 @@ pub(crate) fn resolve(files: &[&Extracted], unindexed_modules: &[String]) -> Gra
         bases: BTreeMap::new(),
         subclasses: BTreeMap::new(),
         unindexed: unindexed_modules,
+        impl_scopes: BTreeMap::new(),
     };
     index.register_foreign_impls();
     index.link_classes();
@@ -249,8 +273,14 @@ pub(crate) fn resolve(files: &[&Extracted], unindexed_modules: &[String]) -> Gra
             edges.extend(index.ref_edge(module, path, r));
         }
     }
+    for e in &mut edges {
+        e.caller = canonical(&index.impl_scopes, &e.caller);
+    }
     edges.sort_by(|a, b| (&a.path, a.line).cmp(&(&b.path, b.line)));
-    Graph { edges }
+    Graph {
+        edges,
+        impl_scopes: index.impl_scopes,
+    }
 }
 
 impl Index<'_> {
@@ -643,6 +673,7 @@ impl Index<'_> {
     /// type's id, so a call on a `Type` finds it.
     fn register_foreign_impls(&mut self) {
         let mut aliases = Vec::new();
+        let mut scopes = Vec::new();
         for (module, (_, facts, _)) in &self.modules {
             for d in &facts.defs {
                 let Some(owner) = &d.owner else { continue };
@@ -656,7 +687,8 @@ impl Index<'_> {
                 let Some(class) = self.type_class(module, None, owner) else {
                     continue;
                 };
-                let name = d.qualname.rsplit('.').next().unwrap_or(&d.qualname);
+                let (scope, name) = d.qualname.rsplit_once('.').unwrap_or(("", &d.qualname));
+                scopes.push((qualify(module, scope), class.clone()));
                 let sym = Sym {
                     kind: d.kind,
                     ty: d.ty.clone(),
@@ -669,6 +701,7 @@ impl Index<'_> {
         for (id, sym) in aliases {
             self.symbols.entry(id).or_insert(sym);
         }
+        self.impl_scopes.extend(scopes);
     }
 
     /// The class a type path names, as seen from `enclosing` in `module`.

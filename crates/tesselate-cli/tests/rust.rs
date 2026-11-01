@@ -219,7 +219,7 @@ fn type_references_are_edges_with_their_enclosing_item_as_the_source() {
             "resolved[import] shapes.util.<module> -> shapes.Circle shapes/src/util.rs:1",
             "resolved[type] shapes.util.make -> shapes.Circle shapes/src/util.rs:7",
             "resolved[type] shapes.util.make -> shapes.Circle shapes/src/util.rs:8",
-            "resolved[type] shapes.util.shapes.Circle -> shapes.Circle shapes/src/util.rs:28",
+            "resolved[type] shapes.Circle -> shapes.Circle shapes/src/util.rs:28",
         ]
     );
 }

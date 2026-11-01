@@ -56,6 +56,7 @@ pub struct Def {
     pub qualname: String,
     pub kind: DefKind,
     pub line: usize,
+    pub end_line: usize,
     /// For classes: base-class expressions as written (`Base`, `models.Base`).
     pub bases: Vec<String>,
     /// Declared type as a dotted path, generics and references stripped: a field's type, a

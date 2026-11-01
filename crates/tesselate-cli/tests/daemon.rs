@@ -490,3 +490,26 @@ fn an_index_build_longer_than_the_idle_timeout_still_answers() {
     );
     assert!(!out.stdout.is_empty());
 }
+
+#[test]
+fn outline_from_the_daemon_follows_an_edit() {
+    let rt = Runtime::new();
+    let repo = scratch_repo();
+    let ids = |rt: &Runtime| -> Vec<String> {
+        let v: serde_json::Value =
+            serde_json::from_str(&rt.ok(repo.path(), &["call", "outline", "{}"])).unwrap();
+        v["definitions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|d| d["id"].as_str().unwrap().to_string())
+            .collect()
+    };
+    assert!(!ids(&rt).contains(&"app.util.added".to_string()));
+    write(
+        repo.path(),
+        "app/util.py",
+        "def helper():\n    return 1\n\n\ndef added():\n    pass\n",
+    );
+    assert!(ids(&rt).contains(&"app.util.added".to_string()));
+}

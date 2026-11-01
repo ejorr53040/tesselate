@@ -29,6 +29,11 @@ tesselate guide                          # print this document
 4. If something you expect is missing, `unindexed_files` says why (gitignored, vendored,
    unsupported language). Override with `index.include` in `.tesselate/config.toml`.
 
+For programs rather than readers: `outline` returns every module and definition as versioned
+JSON (`id`, `kind`, `name`, `parent`, `path`, `line`, `end_line`, plus `unindexed`), and
+`edges` every reference. Each edge's `caller` and targets are outline ids; module-level code
+is `<module id>.<module>`.
+
 ## Reading edge states
 
 | state | meaning | what to do |

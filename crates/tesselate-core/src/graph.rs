@@ -285,10 +285,11 @@ pub(crate) fn resolve(files: &[&Extracted], unindexed_modules: &[String]) -> Gra
 
 impl Index<'_> {
     fn edge(&self, module: &str, path: &str, call: &Call) -> Edge {
-        let caller = match &call.enclosing {
-            Some(q) => qualify(module, q),
-            None => qualify(module, "<module>"),
-        };
+        // Module-level code is the module itself, so callers join the outline's ids.
+        let caller = call
+            .enclosing
+            .as_deref()
+            .map_or(module.to_string(), |q| qualify(module, q));
         let mut edge = Edge {
             kind: EdgeKind::Call,
             caller,
@@ -812,7 +813,10 @@ impl Index<'_> {
     /// Turn a non-call reference into an edge, or drop it: only connections that resolve,
     /// plus unresolved type/field uses (which flag gaps), are worth recording.
     fn ref_edge(&self, module: &str, path: &str, r: &lang::Ref) -> Option<Edge> {
-        let caller = qualify(module, r.enclosing.as_deref().unwrap_or("<module>"));
+        let caller = r
+            .enclosing
+            .as_deref()
+            .map_or(module.to_string(), |q| qualify(module, q));
         let outcome = self.resolve_ref(module, r.enclosing.as_deref(), &r.expr, r.recv_local)?;
         let (state, targets, reason) = match outcome {
             Outcome::Resolved(t) => (EdgeState::Resolved, t, None),

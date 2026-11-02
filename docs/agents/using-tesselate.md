@@ -29,10 +29,12 @@ tesselate guide                          # print this document
 4. If something you expect is missing, `unindexed_files` says why (gitignored, vendored,
    unsupported language). Override with `index.include` in `.tesselate/config.toml`.
 
-For programs rather than readers: `outline` returns every module and definition as versioned
-JSON (`id`, `kind`, `name`, `parent`, `path`, `line`, `end_line`, plus `unindexed`), and
-`edges` every reference. Each edge's `caller` and targets are outline ids; module-level code
-is `<module id>.<module>`.
+For programs rather than readers: `outline` returns every module and definition as JSON
+(`schema_version`, then `definitions` with `id`, `kind`, `name`, `parent`, `path`, `line`,
+`end_line`, plus `unindexed`), and `edges` every reference. An edge's `caller` is always an
+outline id (module-level code is the module's id), and so are the targets of `resolved` and
+`candidate` edges. A Rust field and method can share an id (`self.level` / `self.level()`):
+a `field` edge means the field, any other kind the method.
 
 ## Reading edge states
 

@@ -2,6 +2,7 @@
 //! (`tesselate tools` / `tesselate call`) and, later, the MCP server and `tesselate ask`.
 //! Every tool takes a JSON object and returns JSON, so a model can call it directly.
 
+use crate::lang::DefKind;
 use crate::snapshot::Snapshot;
 use crate::walk::WalkOptions;
 use serde_json::{json, Value};
@@ -165,11 +166,7 @@ pub(crate) fn dispatch(snap: &Snapshot, name: &str, args: &Value) -> Result<Valu
         "references" => Ok(json!(g.references(str_arg("symbol")?))),
         "edges" => Ok(json!(g.edges)),
         "outline" => Ok(outline(snap)),
-        "unindexed_files" => Ok(json!(snap
-            .unindexed
-            .iter()
-            .map(|s| json!({"path": s.rel, "reason": s.reason.label()}))
-            .collect::<Vec<_>>())),
+        "unindexed_files" => Ok(json!(unindexed_files(snap))),
         _ => Err(format!(
             "unknown tool `{name}`; available: {}",
             catalog()
@@ -181,7 +178,7 @@ pub(crate) fn dispatch(snap: &Snapshot, name: &str, args: &Value) -> Result<Valu
     }
 }
 
-/// Bump `version` on any change a consumer could trip on (Chisel records this output).
+/// Bump `schema_version` on any change a consumer could trip on (Chisel records this output).
 fn outline(snap: &Snapshot) -> Value {
     let mut defs = Vec::new();
     for src in &snap.sources {
@@ -192,50 +189,57 @@ fn outline(snap: &Snapshot) -> Value {
             continue;
         };
         let module = language.module_name(&src.path);
-        defs.push((
-            module.clone(),
-            "module",
-            module.clone(),
-            &src.path,
-            1,
-            src.text.lines().count().max(1),
-        ));
+        defs.push(json!({
+            "id": module,
+            "kind": DefKind::Module.label(),
+            "path": src.path,
+            "line": 1,
+            "end_line": src.text.lines().count().max(1),
+        }));
         for d in &file.facts.defs {
-            let name = d
-                .qualname
-                .rsplit('.')
-                .next()
-                .unwrap_or(&d.qualname)
-                .to_string();
             let id = snap
                 .graph
                 .canonical(&crate::graph::qualify(&module, &d.qualname));
-            defs.push((id, d.kind.label(), name, &src.path, d.line, d.end_line));
+            defs.push(json!({
+                "id": id,
+                "kind": d.kind.label(),
+                "path": src.path,
+                "line": d.line,
+                "end_line": d.end_line,
+            }));
         }
     }
-    defs.sort_by(|a, b| (a.3, a.4).cmp(&(b.3, b.4)));
-    let ids: std::collections::HashSet<&str> = defs.iter().map(|d| d.0.as_str()).collect();
-    let definitions: Vec<Value> = defs
+    let line = |d: &Value| d["line"].as_u64();
+    defs.sort_by(|a, b| (a["path"].as_str(), line(a)).cmp(&(b["path"].as_str(), line(b))));
+    let ids: std::collections::HashSet<String> = defs
         .iter()
-        .map(|(id, kind, name, path, line, end_line)| {
-            let mut v = json!({"id": id, "kind": kind, "name": name, "path": path, "line": line, "end_line": end_line});
-            // The parent is the nearest enclosing id that is itself listed.
-            let mut prefix = id.as_str();
-            while let Some((p, _)) = prefix.rsplit_once('.') {
-                if ids.contains(p) {
-                    v["parent"] = json!(p);
-                    break;
-                }
-                prefix = p;
-            }
-            v
-        })
+        .map(|d| d["id"].as_str().unwrap().to_string())
         .collect();
+    for d in &mut defs {
+        let id = d["id"].as_str().unwrap().to_string();
+        d["name"] = json!(id.rsplit('.').next().unwrap_or(&id));
+        // The parent is the nearest enclosing id that is itself listed.
+        let mut prefix = id.as_str();
+        while let Some((p, _)) = prefix.rsplit_once('.') {
+            if ids.contains(p) {
+                d["parent"] = json!(p);
+                break;
+            }
+            prefix = p;
+        }
+    }
     json!({
-        "version": 1,
-        "definitions": definitions,
-        "unindexed": snap.unindexed.iter().map(|s| json!({"path": s.rel, "reason": s.reason.label()})).collect::<Vec<_>>(),
+        "schema_version": 1,
+        "definitions": defs,
+        "unindexed": unindexed_files(snap),
     })
+}
+
+fn unindexed_files(snap: &Snapshot) -> Vec<Value> {
+    snap.unindexed
+        .iter()
+        .map(|s| json!({"path": s.rel, "reason": s.reason.label()}))
+        .collect()
 }
 
 fn overview(snap: &Snapshot) -> Value {

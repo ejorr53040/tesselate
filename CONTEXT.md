@@ -12,6 +12,10 @@ _Avoid_: server, service
 The index of a repo as built at one moment, with the size and mtime of every file it covers.
 _Avoid_: cache, build
 
+**Definition**:
+A named thing the index records (module, type, function, method, field, variant, const), with a qualified id, a kind and a line span. `symbols` lists them for readers; `outline` lists them as JSON for programs, with every indexed file as a module definition.
+_Avoid_: entity, node
+
 **Edge state**:
 How confidently a reference was tied to its target, one of the terms below. Every edge carries exactly one.
 _Avoid_: confidence, label

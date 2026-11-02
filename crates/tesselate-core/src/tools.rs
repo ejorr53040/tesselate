@@ -2,6 +2,7 @@
 //! (`tesselate tools` / `tesselate call`) and, later, the MCP server and `tesselate ask`.
 //! Every tool takes a JSON object and returns JSON, so a model can call it directly.
 
+use crate::lang::DefKind;
 use crate::snapshot::Snapshot;
 use crate::walk::WalkOptions;
 use serde_json::{json, Value};
@@ -105,6 +106,11 @@ pub fn catalog() -> Vec<Value> {
             "input_schema": none,
         }),
         json!({
+            "name": "outline",
+            "description": "The repo's whole structure in one versioned answer, for programs: every module and definition with qualified id, kind, name, parent id, path, line and end_line, plus the unindexed files, ordered by path then line. Join with `edges` on `caller`.",
+            "input_schema": none,
+        }),
+        json!({
             "name": "unindexed_files",
             "description": "Source files that were skipped and why (gitignore, tesselateignore, vendored, unsupported-language, parse-failure). Check this when a symbol you expect is missing.",
             "input_schema": none,
@@ -159,11 +165,8 @@ pub(crate) fn dispatch(snap: &Snapshot, name: &str, args: &Value) -> Result<Valu
         "stylesheets" => Ok(json!(m.stylesheets())),
         "references" => Ok(json!(g.references(str_arg("symbol")?))),
         "edges" => Ok(json!(g.edges)),
-        "unindexed_files" => Ok(json!(snap
-            .unindexed
-            .iter()
-            .map(|s| json!({"path": s.rel, "reason": s.reason.label()}))
-            .collect::<Vec<_>>())),
+        "outline" => Ok(outline(snap)),
+        "unindexed_files" => Ok(json!(unindexed_files(snap))),
         _ => Err(format!(
             "unknown tool `{name}`; available: {}",
             catalog()
@@ -173,6 +176,70 @@ pub(crate) fn dispatch(snap: &Snapshot, name: &str, args: &Value) -> Result<Valu
                 .join(", ")
         )),
     }
+}
+
+/// Bump `schema_version` on any change a consumer could trip on (Chisel records this output).
+fn outline(snap: &Snapshot) -> Value {
+    let mut defs = Vec::new();
+    for src in &snap.sources {
+        let (Some(language), Some(file)) = (
+            crate::lang::for_path(&src.path),
+            snap.extracted.get(&src.path),
+        ) else {
+            continue;
+        };
+        let module = language.module_name(&src.path);
+        defs.push(json!({
+            "id": module,
+            "kind": DefKind::Module.label(),
+            "path": src.path,
+            "line": 1,
+            "end_line": src.text.lines().count().max(1),
+        }));
+        for d in &file.facts.defs {
+            let id = snap
+                .graph
+                .canonical(&crate::graph::qualify(&module, &d.qualname));
+            defs.push(json!({
+                "id": id,
+                "kind": d.kind.label(),
+                "path": src.path,
+                "line": d.line,
+                "end_line": d.end_line,
+            }));
+        }
+    }
+    let line = |d: &Value| d["line"].as_u64();
+    defs.sort_by(|a, b| (a["path"].as_str(), line(a)).cmp(&(b["path"].as_str(), line(b))));
+    let ids: std::collections::HashSet<String> = defs
+        .iter()
+        .map(|d| d["id"].as_str().unwrap().to_string())
+        .collect();
+    for d in &mut defs {
+        let id = d["id"].as_str().unwrap().to_string();
+        d["name"] = json!(id.rsplit('.').next().unwrap_or(&id));
+        // The parent is the nearest enclosing id that is itself listed.
+        let mut prefix = id.as_str();
+        while let Some((p, _)) = prefix.rsplit_once('.') {
+            if ids.contains(p) {
+                d["parent"] = json!(p);
+                break;
+            }
+            prefix = p;
+        }
+    }
+    json!({
+        "schema_version": 1,
+        "definitions": defs,
+        "unindexed": unindexed_files(snap),
+    })
+}
+
+fn unindexed_files(snap: &Snapshot) -> Vec<Value> {
+    snap.unindexed
+        .iter()
+        .map(|s| json!({"path": s.rel, "reason": s.reason.label()}))
+        .collect()
 }
 
 fn overview(snap: &Snapshot) -> Value {

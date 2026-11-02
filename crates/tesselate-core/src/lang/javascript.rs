@@ -391,6 +391,7 @@ impl State<'_> {
             qualname: qualname.clone(),
             kind,
             line: node.start_position().row + 1,
+            end_line: node.end_position().row + 1,
             bases,
             ty: None,
             owner: None,

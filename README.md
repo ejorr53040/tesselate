@@ -51,6 +51,8 @@ number and the chart below; see [Metrics](CLAUDE.md#metrics) for when to run it.
 | 16 | `126af02` | reindex (#61) | 100.0% | 100.0% | 100.0% | 0 | 4 | 8 (3 / 2 / 3) |
 | 17 | `599d586` | watcher (#65) | 100.0% | 100.0% | 100.0% | 0 | 4 | 10 (5 / 3 / 2) |
 | 18 | `5d8b78e` | rename to tesselate (#70) | 100.0% | 100.0% | 100.0% | 0 | 4 | 8 (6 / 2 / 0) |
+| 19 | `c7411f5` | outline tool v1 (#77) | 100.0% | 100.0% | 100.0% | 0 | 4 | – |
+| 20 | `96ec6e2` | outline review fixes (#77) | 100.0% | 100.0% | 100.0% | 0 | 4 | 19 (11 / 8 / 0) |
 
 
 <!-- metrics:end -->
@@ -90,8 +92,9 @@ The same scoring on a repository outside tesselate. Run 1 is tesselate's first l
 | 23 | `f81ce40` | `a8cf4eb` | code-review fixes (web languages) | 100.0% | 100.0% | 100.0% | 86.1% | 0 | 1 | 31,894 (82,151) | 100% / 92% / 96% |
 | 24 | `561be67` | `a8cf4eb` | daemon + thin client | 100.0% | 100.0% | 100.0% | 86.1% | 0 | 1 | 31,894 (82,151) | 100% / 92% / 96% |
 | 25 | `2368492` | `a8cf4eb` | rename to tesselate (#70) | 100.0% | 100.0% | 100.0% | 86.1% | 0 | 1 | 31,895 (82,151) | 100% / 92% / 96% |
+| 26 | `96ec6e2` | `a8cf4eb` | outline review fixes (#77) | 100.0% | 100.0% | 100.0% | 86.1% | 0 | 1 | 31,895 (82,151) | 100% / 92% / 96% |
 
-Latest run (`2368492`) by connection type. *seen*: tesselate recorded a connection at that spot; *right*: and its targets include the correct definition.
+Latest run (`96ec6e2`) by connection type. *seen*: tesselate recorded a connection at that spot; *right*: and its targets include the correct definition.
 
 | Connection | Total | Seen | Right | Exact |
 | --- | ---: | ---: | ---: | ---: |

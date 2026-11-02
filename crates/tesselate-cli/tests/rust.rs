@@ -203,7 +203,7 @@ fn type_references_are_edges_with_their_enclosing_item_as_the_source() {
     assert_eq!(
         refs("shapes.Circle"),
         vec![
-            "resolved[import] app.main.<module> -> shapes.Circle app/src/main.rs:2",
+            "resolved[import] app.main -> shapes.Circle app/src/main.rs:2",
             "resolved[type] app.main.main -> shapes.Circle app/src/main.rs:5",
             "resolved[type] app.main.shadow -> shapes.Circle app/src/main.rs:14",
             "resolved[type] app.main.field_on_unknown -> shapes.Circle app/src/main.rs:112",
@@ -216,10 +216,10 @@ fn type_references_are_edges_with_their_enclosing_item_as_the_source() {
             "resolved[type] shapes.Circle.area -> shapes.Circle shapes/src/lib.rs:29",
             "resolved[type] shapes.Circle -> shapes.Circle shapes/src/lib.rs:33",
             "resolved[type] shapes.Circle -> shapes.Circle shapes/src/lib.rs:52",
-            "resolved[import] shapes.util.<module> -> shapes.Circle shapes/src/util.rs:1",
+            "resolved[import] shapes.util -> shapes.Circle shapes/src/util.rs:1",
             "resolved[type] shapes.util.make -> shapes.Circle shapes/src/util.rs:7",
             "resolved[type] shapes.util.make -> shapes.Circle shapes/src/util.rs:8",
-            "resolved[type] shapes.util.shapes.Circle -> shapes.Circle shapes/src/util.rs:28",
+            "resolved[type] shapes.Circle -> shapes.Circle shapes/src/util.rs:28",
         ]
     );
 }
@@ -349,12 +349,12 @@ fn modules_are_symbols_and_path_segments_and_uses_are_edges_to_them() {
     assert_eq!(
         refs("shapes.util"),
         vec![
-            "resolved[import] app.main.<module> -> shapes.util app/src/main.rs:1",
-            "resolved[import] app.main.<module> -> shapes.util app/src/main.rs:11",
+            "resolved[import] app.main -> shapes.util app/src/main.rs:1",
+            "resolved[import] app.main -> shapes.util app/src/main.rs:11",
             "resolved[path] app.main.path_beats_local -> shapes.util app/src/main.rs:204",
-            "resolved[path] shapes.<module> -> shapes.util shapes/src/lib.rs:1",
+            "resolved[path] shapes -> shapes.util shapes/src/lib.rs:1",
             "resolved[path] shapes.Circle.area -> shapes.util shapes/src/lib.rs:29",
-            "resolved[import] shapes.<module> -> shapes.util shapes/src/lib.rs:50",
+            "resolved[import] shapes -> shapes.util shapes/src/lib.rs:50",
             "resolved[path] shapes.via_inline -> shapes.util shapes/src/lib.rs:115",
             "resolved[path] shapes.via_inline_missing -> shapes.util shapes/src/lib.rs:121",
             "resolved[import] shapes.util.inline_tests -> shapes.util shapes/src/util.rs:17",
@@ -368,9 +368,9 @@ fn imports_follow_reexports_to_the_definition() {
     assert_eq!(
         refs("shapes.util.make"),
         vec![
-            "resolved[import] app.main.<module> -> shapes.util.make app/src/main.rs:28",
+            "resolved[import] app.main -> shapes.util.make app/src/main.rs:28",
             "resolved app.main.reexport -> shapes.util.make app/src/main.rs:31",
-            "resolved[import] shapes.<module> -> shapes.util.make shapes/src/lib.rs:50",
+            "resolved[import] shapes -> shapes.util.make shapes/src/lib.rs:50",
         ]
     );
 }
@@ -476,12 +476,10 @@ fn items_inside_inline_modules_resolve_from_that_module() {
 
 #[test]
 fn visibility_on_modules_and_types_in_item_macros_are_references() {
-    assert!(refs("shapes").contains(
-        &"resolved[path] shapes.util.<module> -> shapes shapes/src/util.rs:26".to_string()
-    ));
-    assert!(refs("shapes.Gauge").contains(
-        &"resolved[type] shapes.<module> -> shapes.Gauge shapes/src/lib.rs:118".to_string()
-    ));
+    assert!(refs("shapes")
+        .contains(&"resolved[path] shapes.util -> shapes shapes/src/util.rs:26".to_string()));
+    assert!(refs("shapes.Gauge")
+        .contains(&"resolved[type] shapes -> shapes.Gauge shapes/src/lib.rs:118".to_string()));
 }
 
 #[test]
